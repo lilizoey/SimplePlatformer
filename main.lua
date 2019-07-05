@@ -35,6 +35,12 @@ GROUND_LEVEL = 500
 
 -- helpers
 
+function verifyHeldKey(obj)
+    if type(obj.heldKey) ~= "table" then
+        error("heldkey must be a table")
+    end
+end
+
 --- Finds first occurence of val
 function linearFind(t, val)
     for i, v in ipairs(t) do
@@ -85,13 +91,15 @@ Ground = System.new(
 
 MoveController = System.new(
     "move controller",
-    {"velX"},
-    function (obj, key)
-        obj.velX = 0
-        if key == "left" then 
-            obj.velX = obj.velX - 20
-        elseif key == "right" then
-            obj.velX = obj.velX + 20
+    {"heldKey", "velX", "movementSpeed"},
+    function (obj, dt)
+        if not obj.heldKey.left == nil then 
+            print("left: " .. obj.heldKey.left)
+        end
+        if obj.heldKey.left and obj.velX > -20 then 
+            obj.velX = obj.velX - obj.movementSpeed * dt
+        elseif obj.heldKey.right and obj.velX < 20 then
+            obj.velX = obj.velX + obj.movementSpeed * dt
         end
     end,
     verifyHeldKey
@@ -99,22 +107,16 @@ MoveController = System.new(
 
 JumpController = System.new(
     "jump controller",
-    {"velY", "hasJumped", "jumpCount", "maxJumps", "jumpHeight"},
+    {"velY", "jumpCount", "maxJumps", "jumpHeight"},
     function (obj, key)
-        if key ~= "up" then 
-            obj.hasJumped = false
-            return 
-        end
-
-        if obj.hasJumped then return end
+        if key ~= "up" then return end
 
         if obj.jumpCount >= obj.maxJumps then return end
 
         obj.velY = -obj.jumpHeight
         obj.jumpCount = obj.jumpCount + 1
         obj.hasJumped = true
-    end,
-    verifyHeldKey
+    end
 )
 
 function walljump(obj, sign)
@@ -141,8 +143,7 @@ WallJumpController = System.new(
         if left then
             walljump(obj, 1)
         end
-    end,
-    verifyHeldKey
+    end
 )
 
 
@@ -196,6 +197,17 @@ CollisionHandler = System.new(
     end
 )
 
+-- key handling
+
+HeldKeyHandler = System.new(
+    "held key handler",
+    {"heldKey"},
+    function (obj, key, press)
+        obj.heldKey[key] = press
+    end,
+    verifyHeldKey
+)
+
 -- main
 
 myObj = {}
@@ -208,10 +220,12 @@ myObj.height = 20
 myObj.width = 20
 myObj.jumpCount = 0
 myObj.maxJumps = 2
-myObj.jumpHeight = 20
+myObj.jumpHeight = 40
+myObj.movementSpeed = 40
 myObj.hasJumped = false
 myObj.hasCollided = false
 myObj.airResistance = 0.90
+myObj.heldKey = {}
 
 wall = {}
 
@@ -228,6 +242,7 @@ JumpController:register(myObj)
 WallJumpController:register(myObj)
 CollisionHandler:register(myObj)
 AirFriction:register(myObj)
+HeldKeyHandler:register(myObj)
 
 WORLD:register(myObj)
 WORLD:register(wall)
@@ -238,6 +253,7 @@ function testState.update(dt)
     Ground:run()
     CollisionHandler:run(dt)
     AirFriction:run(dt)
+    MoveController:run(dt)
 end
 
 function testState.draw()
@@ -246,10 +262,11 @@ function testState.draw()
 end
 
 function testState.keypressed(key, scancode, isrepeat)
-    MoveController:run(key)
+    HeldKeyHandler:run(key, true)
     WallJumpController:run(key)
     JumpController:run(key)
 end
 
 function testState.keyreleased(key, scancode)
+    HeldKeyHandler:run(key, false)
 end
