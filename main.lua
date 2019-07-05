@@ -73,21 +73,21 @@ end
 
 Ground = System.new(
     "ground",
-    {"x", "y", "velY", "height", "jumpCount", "hasCollided"},
+    {"x", "y", "velY", "height", "jumpCount", "hasCollided", "floorCollider"},
     function (obj)
         local groundLevel = love.graphics.getHeight() 
 
         if obj.y + obj.height >= groundLevel then
             obj.y = groundLevel - obj.height
             obj.jumpCount = 0
-        elseif obj.hasCollided and WORLD:check(obj, obj.x, obj.y + 1) then
+        elseif obj.hasCollided and WORLD:check(floorCollider, obj.x, obj.y + 1) then
             obj.velY = 0
             obj.jumpCount = 0
         end
     end
 )
 
--- move controller
+-- move controllerS
 
 MoveController = System.new(
     "move controller",
@@ -96,10 +96,10 @@ MoveController = System.new(
         if not obj.heldKey.left == nil then 
             print("left: " .. obj.heldKey.left)
         end
-        if obj.heldKey.left and obj.velX > -20 then 
-            obj.velX = obj.velX - obj.movementSpeed * dt
-        elseif obj.heldKey.right and obj.velX < 20 then
-            obj.velX = obj.velX + obj.movementSpeed * dt
+        if obj.heldKey.left and obj.velX > -obj.movementSpeed then
+            obj.velX = obj.velX - obj.movementSpeed * dt * PHYSICS_SCALE
+        elseif obj.heldKey.right and obj.velX < obj.movementSpeed then
+            obj.velX = obj.velX + obj.movementSpeed * dt * PHYSICS_SCALE
         end
     end,
     verifyHeldKey
@@ -134,7 +134,6 @@ WallJumpController = System.new(
 
         local right = WORLD:check(obj, obj.x + 1, obj.y)
         local left = WORLD:check(obj, obj.x - 1, obj.y)
-
 
         if right then 
             walljump(obj, -1)
@@ -227,6 +226,14 @@ myObj.hasCollided = false
 myObj.airResistance = 0.90
 myObj.heldKey = {}
 
+floorCollider = {
+    width = 10,
+    height = 20
+}
+
+myObj.floorCollider = floorCollider
+
+
 wall = {}
 
 wall.width = 20
@@ -244,7 +251,6 @@ CollisionHandler:register(myObj)
 AirFriction:register(myObj)
 HeldKeyHandler:register(myObj)
 
-WORLD:register(myObj)
 WORLD:register(wall)
 
 function testState.update(dt)
