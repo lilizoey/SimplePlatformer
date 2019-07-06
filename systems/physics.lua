@@ -54,11 +54,46 @@ Module.Move = System.new(
             end
 
             if xColl then
+                if obj.state ~= nil then
+                    if xColl.x < obj.x then
+                        obj.state:tryTransition("collide wall left")
+                        obj.velX = -1
+                    else
+                        obj.state:tryTransition("collide wall right")
+                        obj.velX = 1
+                    end
+                else 
+                    obj.velX = 0
+                end
+
+
                 newX = bump(obj.x, xColl.x, obj.width, xColl.width)
             end
 
             if yColl then
+                if newY > obj.y and obj.state ~= nil then
+                    obj.state:tryTransition("collide ground")
+                end
+
+                if newY < obj.y then
+                    obj.velY = 0
+                end
+
                 newY = bump(obj.y, yColl.y, obj.height, yColl.height)
+            end
+        end
+
+        if newY > obj.y and obj.state ~= nil then
+            obj.state:tryTransition("leave ground")
+        end
+
+        if obj.state ~= nil then
+            local state = obj.state:getState()
+
+            if state == "wallslideleft" and newX < obj.x then
+                obj.state:tryTransition("leave wall")
+            elseif state == "wallslideright" and newX > obj.x then
+                obj.state:tryTransition("leave wall")                
             end
         end
 
@@ -71,13 +106,25 @@ Module.Gravity = System.new(
     "gravity",
     {"velY"},
     function (obj, dt)
-        local realGravity = Module.constants.gravity
-        if obj.state ~= nil and obj.state:getState() == "float" then
-            assert(obj.floatModifier ~= nil)
-            realGravity = realGravity * obj.floatModifier
-        end
+        if obj.state ~= nil then
+            local state = obj.state:getState()
+            if state == "float" then
+                assert(obj.floatModifier ~= nil)
 
-        obj.velY = obj.velY + realGravity * dt * Module.constants.scale
+                obj.velY = obj.velY + Module.constants.gravity * dt * Module.constants.scale * obj.floatModifier            
+            elseif state == "fall" then
+                obj.velY = obj.velY + Module.constants.gravity * dt * Module.constants.scale
+            elseif state == "ground" then
+                obj.velY = 1
+            elseif state == "wallslideleft" or state == "wallslideright" then
+                assert(obj.wallFriction ~= nil)
+
+                obj.velY = obj.velY + Module.constants.gravity * dt * Module.constants.scale
+                obj.velY = obj.velY * math.pow(1 - obj.wallFriction, dt)
+            end
+        else
+            obj.velY = obj.velY + Module.constants.gravity * dt * Module.constants.scale
+        end
     end
 )
 

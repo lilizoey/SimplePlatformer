@@ -52,7 +52,7 @@ function StateMachine.tryTransition(self, symbol)
     end
 
     self.currentState = transition
-
+    print(self:getState())
     return true
 end
 

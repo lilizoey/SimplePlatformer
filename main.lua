@@ -58,17 +58,24 @@ end
 
 -- main
 
+Walls = {}
+
+local function createWall(x1, y1, x2, y2)
+    wall = {}
+
+    wall.width = x2 - x1
+    wall.height = y2 - y1
+    wall.x = x1
+    wall.y = y1
+
+    table.insert(Walls, wall)
+    WORLD:register(wall)
+end
+
 myObj = Player.new(20, 20, 20, 40, 40, 2)
 myObj.x = 100
 
 myObj.colliders = WORLD
-
-wall = {}
-
-wall.width = 200
-wall.height = 20
-wall.x = 50
-wall.y = 450
 
 Physics.constants.scale = 5
 
@@ -79,18 +86,28 @@ Control.JumpHandler:register(myObj)
 Control.InputHandler:register(myObj)
 Control.Movement:register(myObj)
 
-WORLD:register(wall)
+function testState.load()
+
+    createWall(0, love.graphics.getHeight(), love.graphics.getWidth(), love.graphics.getHeight() + 10)
+    createWall(100, love.graphics.getHeight() - 100, 120, love.graphics.getHeight())
+
+
+end
 
 function testState.update(dt)
-    Physics.Move:run(dt)
-    Physics.Gravity:run(dt)
-    Control.JumpHandler:run()
+    Player.DataHandler:run()
     Control.Movement:run(dt)
+    Control.JumpHandler:run()
+    Physics.Gravity:run(dt)
+    Physics.Move:run(dt)
 end
 
 function testState.draw()
     love.graphics.rectangle("fill", myObj.x, myObj.y, myObj.width, myObj.height)
-    love.graphics.rectangle("fill", wall.x, wall.y, wall.width, wall.height)
+    for i, wall in ipairs(Walls) do
+        love.graphics.rectangle("fill", wall.x, wall.y, wall.width, wall.height)
+    end
+    love.graphics.print(myObj.state:getState(), 50, 20)
 end
 
 function testState.keypressed(key, scancode, isrepeat)

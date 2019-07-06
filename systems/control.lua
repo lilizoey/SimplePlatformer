@@ -54,7 +54,9 @@ Module.InputHandler = System.new(
         else
             event = "release "
         end
-
+        if key == "up" then
+            print(obj.jumpCount)
+        end
         if key == "up" and obj.jumpCount < obj.maxJumps then
             obj.state:tryTransition(event .. "jump")
         end
@@ -63,17 +65,49 @@ Module.InputHandler = System.new(
     verifyState
 )
 
+local function doMove(obj, dt, sign)
+    local newV = obj.velX + obj.jerk * dt * Physics.constants.scale * sign
+
+    if math.abs(newV) > obj.movementSpeed then
+        obj.velX = obj.movementSpeed * sign
+    else
+        obj.velX = newV
+    end
+end
+
 Module.Movement = System.new(
     "movement",
     {"state", "heldKeys", "velX", "movementSpeed", "jerk"},
     function (obj, dt)
-        if obj.heldKeys.right then
-            local newVX = obj.velX + obj.jerk * dt * Physics.constants.scale
 
-            if newVX > obj.movementSpeed then
-                obj.velX = obj.movementSpeed
+        if obj.state:getState() == "wallslideleft" or obj.state:getState() == "wallslideright" then
+            if obj.heldKeys.up then
+                if obj.jumpCount ~= nil then obj.jumpCount = obj.jumpCount - 1 end
+                obj.state:tryTransition("press jump")
+            end
+
+            if obj.heldKeys.left and not obj.heldKeys.right and obj.state:getState() == "wallslideright" then
+                obj.state:tryTransition("leave wall")
+            end
+
+            if obj.heldKeys.right and not obj.heldKeys.left and obj.state:getState() == "wallslideleft" then
+                obj.state:tryTransition("leave wall")
+            end
+        end
+
+        if obj.heldKeys.right then
+            doMove(obj, dt, 1)
+        end
+
+        if obj.heldKeys.left then
+            doMove(obj, dt, -1)
+        end
+
+        if not (obj.heldKeys.left or obj.heldKeys.right) then
+            if math.abs(obj.velX) < 5 then
+                obj.velX = 0
             else
-                obj.velX = newVX
+                obj.velX = obj.velX * math.pow(0.1, dt)
             end
         end
     end,

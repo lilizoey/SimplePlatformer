@@ -15,18 +15,28 @@
 --  You should have received a copy of the GNU Affero General Public License
 --  along with SimplePlatformer.  If not, see <https://www.gnu.org/licenses/>.
 
-StateMachine = require "statemachine"
-System = require "system"
-
--- Systems
-
-
-
--- Data
-
+local StateMachine = require "statemachine"
+local System = require "system"
 
 local Player = {}
 Player.__index = Player
+
+-- Systems
+
+Player.DataHandler = System.new(
+    "data handler",
+    {"state", "jumpCount"},
+    function (obj)
+        local state = obj.state:getState()
+
+        if state == "ground" then
+            obj.jumpCount = 0
+        end
+    end
+)
+
+-- Data
+
 
 function Player.new(width, height, jerk, movementSpeed, jumpSpeed, maxJumps)
     local self = setmetatable({}, Player)
@@ -41,6 +51,7 @@ function Player.new(width, height, jerk, movementSpeed, jumpSpeed, maxJumps)
     self.height = height
 
     self.floatModifier = 0.8
+    self.wallFriction = 1
 
     -- gameplay values
 
@@ -62,32 +73,41 @@ function Player.new(width, height, jerk, movementSpeed, jumpSpeed, maxJumps)
     self.state:addState("jump")
     self.state:addState("float")
     self.state:addState("fall")
-    self.state:addState("wallslide")
+    self.state:addState("wallslideleft")
+    self.state:addState("wallslideright")
 
     local groundID = self.state:indexOf("ground")
     local jumpID = self.state:indexOf("jump")
     local floatID = self.state:indexOf("float")
     local fallID = self.state:indexOf("fall")
-    local wallSlideID = self.state:indexOf("wallslide")
+    local wallSlideLeftID = self.state:indexOf("wallslideleft")
+    local wallSlideRightID = self.state:indexOf("wallslideright")
 
     self.state:addTransition(groundID, jumpID, "press jump")
     self.state:addTransition(fallID, jumpID, "press jump")
-    self.state:addTransition(wallSlideID, jumpID, "press jump")
+    self.state:addTransition(wallSlideLeftID, jumpID, "press jump")
+    self.state:addTransition(wallSlideRightID, jumpID, "press jump")
 
     self.state:addTransition(jumpID, floatID, "complete jump")
     self.state:addTransition(floatID, fallID, "release jump")
 
     self.state:addTransition(floatID, groundID, "collide ground")
     self.state:addTransition(fallID, groundID, "collide ground")
-    self.state:addTransition(wallSlideID, groundID, "collide ground")
+    self.state:addTransition(wallSlideLeftID, groundID, "collide ground")
+    self.state:addTransition(wallSlideRightID, groundID, "collide ground")
 
     self.state:addTransition(groundID, fallID, "leave ground")
-    self.state:addTransition(wallSlideID, fallID, "leave wall")
+    self.state:addTransition(wallSlideLeftID, fallID, "leave wall")
+    self.state:addTransition(wallSlideRightID, fallID, "leave wall")
 
-    self.state:addTransition(floatID, wallSlideID, "collide wall")
-    self.state:addTransition(fallID, wallSlideID, "collide wall")
+    self.state:addTransition(floatID, wallSlideLeftID, "collide wall left")
+    self.state:addTransition(floatID, wallSlideRightID, "collide wall right")
+    self.state:addTransition(fallID, wallSlideLeftID, "collide wall left")
+    self.state:addTransition(fallID, wallSlideRightID, "collide wall right")
 
-    self.state:setState(self.state:indexOf("ground"))
+    self.state:setState(self.state:indexOf("fall"))
+
+    self.DataHandler:register(self)
 
     return self
 end
