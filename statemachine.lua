@@ -21,7 +21,6 @@ StateMachine.__index = StateMachine
 
 function StateMachine.new()
     local self = setmetatable({}, StateMachine)
-    self.stack = Stack.new()
     self.currentState = 0
     self.states = {}
     self.transitions = {}
@@ -41,32 +40,34 @@ function StateMachine.addState(self, state)
     table.insert(self.transitions, {})
 end
 
-function StateMachine.addTransition(self, fromStateID, toStateID, symbol, pop, push)
-    local transition = {
-        to = toStateID,
-        pop = pop,
-        push = push
-    }
-    self.transitions[fromStateID][symbol] = transition
+function StateMachine.addTransition(self, fromStateID, toStateID, symbol)
+    self.transitions[fromStateID][symbol] = toStateID
 end
 
 function StateMachine.tryTransition(self, symbol)
     local transition = self.transitions[self.currentState][symbol]
-    if transition = nil then
+
+    if transition == nil then
         return false
     end
 
-    if transition.pop ~= nil and self.stack:peek() ~= transition.pop then
-        return false
-    elseif transition.pop ~= nil then
-        self.stack:pop()
-    end
-
-    if transition.push ~= nil then
-        self.stack:push(transition.push)
-    end
-
-    self.currentState = transition.to
+    self.currentState = transition
 
     return true
 end
+
+function StateMachine.indexOf(self, state)
+    for i,v in ipairs(self.states) do
+        if v == state then
+            return i
+        end
+    end
+
+    return nil
+end
+
+function StateMachine.getState(self)
+    return self.states[self.currentState]
+end
+
+return StateMachine
